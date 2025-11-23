@@ -87,6 +87,7 @@ Common errors
 
 - `model_not_supported`: Your HF token does not have access to the chosen model. Switch `HF_MODEL` in `script.js` to a model you can use (e.g., a permissive open model) or request access on Hugging Face.
 - `Local proxy (start with node server.js ... ) error 404`: You launched a static server without the proxy. Either add a client-side token via `config.local.js` or start `node server.js` with `HF_API_KEY` set.
+- `Proxy error 405`: The POST to "/api/generate" hit a server that does not handle it (e.g., a static server). Start `node server.js` with `HF_API_KEY` set, or add a client-side token so the browser can call Hugging Face directly.
 
 Next steps you might want
 

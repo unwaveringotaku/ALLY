@@ -7,7 +7,7 @@
 const HF_API_KEY = window.__HF_API_KEY || document.querySelector('meta[name="hf-api-key"]')?.content || "";
 // Default model: set to a model accessible via your HF token. Change if needed.
 const HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
-const HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions";
+const HF_CHAT_URL = "https://api-inference.huggingface.co/v1/chat/completions";
 const DEFAULT_PARAMETERS = { max_new_tokens: 320, temperature: 0.7 };
 
 const scenarioSelect = document.getElementById("scenarioSelect");
@@ -44,7 +44,7 @@ async function callHuggingFace(prompt) {
   // If a client-side key is present, call HF directly (faster feedback, no proxy needed).
   if (HF_API_KEY) {
     return requestModel(
-      HF_ROUTER_URL,
+      HF_CHAT_URL,
       {
         method: "POST",
         headers: {
@@ -58,7 +58,7 @@ async function callHuggingFace(prompt) {
           max_tokens: DEFAULT_PARAMETERS.max_new_tokens,
         }),
       },
-      "Hugging Face router"
+      "Hugging Face chat completions"
     );
   }
 

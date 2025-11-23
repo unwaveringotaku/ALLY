@@ -9,6 +9,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8000;
 const HF_API_KEY = process.env.HF_API_KEY || '';
+const HF_CHAT_URL = 'https://api-inference.huggingface.co/v1/chat/completions';
 
 app.use(bodyParser.json({ limit: '1mb' }));
 
@@ -38,9 +39,9 @@ app.post('/api/generate', async (req, res) => {
   }
 
   try {
-    console.log('Calling HF router (chat completions) for model:', model);
-    // Use the OpenAI-compatible chat completions endpoint on the HF router.
-    const hfRes = await fetch(`https://router.huggingface.co/v1/chat/completions`, {
+    console.log('Calling HF chat completions endpoint for model:', model);
+    // Use the OpenAI-compatible chat completions endpoint on Hugging Face Inference.
+    const hfRes = await fetch(HF_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
