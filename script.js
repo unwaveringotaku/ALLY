@@ -5,7 +5,8 @@
 // 2) a meta tag: <meta name="hf-api-key" content="...">
 // Otherwise HF_API_KEY will be empty and calls will fail with a clear error.
 const HF_API_KEY = window.__HF_API_KEY || document.querySelector('meta[name="hf-api-key"]')?.content || "";
-const HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
+// Default model: set to a model accessible via your HF token. Change if needed.
+const HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
 
 const scenarioSelect = document.getElementById("scenarioSelect");
 const userInput = document.getElementById("userInput");
@@ -54,8 +55,16 @@ async function callHuggingFace(prompt) {
   const contentType = res.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     const data = await res.json();
+    // Legacy inference output
     if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
     if (data.generated_text) return data.generated_text;
+    // OpenAI-compatible chat completion shape
+    if (data.choices && data.choices[0]) {
+      // new shape: { choices: [{ message: { content: '...' } }] }
+      const choice = data.choices[0];
+      if (choice.message && choice.message.content) return choice.message.content;
+      if (choice.text) return choice.text;
+    }
     return JSON.stringify(data, null, 2);
   }
 
@@ -95,7 +104,8 @@ Use clear bullet points and plain language.`;
     chatOutput.textContent = cleanAssistantOutput(result);
   } catch (err) {
     console.error(err);
-    chatOutput.textContent = "There was an error talking to the model. Please try again.";
+    // Surface useful error information in the UI so it's easier to debug.
+    chatOutput.textContent = err && err.message ? `Error: ${err.message}` : "There was an error talking to the model. Please try again.";
   } finally {
     sendBtn.disabled = false;
   }
@@ -133,7 +143,7 @@ Rules:
     planOutput.textContent = cleanAssistantOutput(result);
   } catch (err) {
     console.error(err);
-    planOutput.textContent = "There was an error generating the plan. Please try again.";
+    planOutput.textContent = err && err.message ? `Error: ${err.message}` : "There was an error generating the plan. Please try again.";
   } finally {
     planBtn.disabled = false;
   }

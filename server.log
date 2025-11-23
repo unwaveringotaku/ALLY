@@ -1,1 +1,18 @@
 Server listening on http://localhost:8000
+2025-11-23T16:20:18.257Z POST /api/generate
+Handler /api/generate invoked
+Headers: {
+  'content-type': 'application/json',
+  accept: '*/*',
+  'content-length': '136',
+  'user-agent': 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)',
+  'accept-encoding': 'gzip,deflate',
+  connection: 'close',
+  host: 'localhost:8000'
+}
+Body payload start
+{"model":"mistralai/Mistral-7B-Instruct-v0.2","inputs":"Say hello as an AI coach.","parameters":{"max_new_tokens":32,"temperature":0.7}}
+Body payload end
+Calling HF router (chat completions) for model: mistralai/Mistral-7B-Instruct-v0.2
+HF response status: 400
+HF response body: {"error":{"message":"The requested model 'mistralai/Mistral-7B-Instruct-v0.2' is not supported by any provider you have enabled.","type":"invalid_request_error","param":"model","code":"model_not_supported"}}

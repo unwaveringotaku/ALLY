@@ -38,14 +38,21 @@ app.post('/api/generate', async (req, res) => {
   }
 
   try {
-    console.log('Calling HF router for model:', model);
-    const hfRes = await fetch(`https://router.huggingface.co/models/${model}`, {
+    console.log('Calling HF router (chat completions) for model:', model);
+    // Use the OpenAI-compatible chat completions endpoint on the HF router.
+    const hfRes = await fetch(`https://router.huggingface.co/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${HF_API_KEY}`,
       },
-      body: JSON.stringify({ inputs, parameters }),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: inputs }],
+        // Map some parameters if present
+        temperature: parameters?.temperature,
+        max_tokens: parameters?.max_new_tokens,
+      }),
     });
 
     console.log('HF response status:', hfRes.status);
