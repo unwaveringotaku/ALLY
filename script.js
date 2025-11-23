@@ -1,15 +1,3 @@
-// Cleaned script.js (full overwrite) — valid JS only
-// NOTE: don't put real API keys in source control. Use a local config file or a meta tag.
-// The app will read the key from (in order):
-// 1) window.__HF_API_KEY (from a local file `config.local.js` you create and gitignore)
-// 2) a meta tag: <meta name="hf-api-key" content="...">
-// Otherwise HF_API_KEY will be empty and calls will fall back to the local proxy.
-const HF_API_KEY = window.__HF_API_KEY || document.querySelector('meta[name="hf-api-key"]')?.content || "";
-// Default model: set to a model accessible via your HF token. Change if needed.
-const HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
-const HF_CHAT_URL = "https://api-inference.huggingface.co/v1/chat/completions";
-const DEFAULT_PARAMETERS = { max_new_tokens: 320, temperature: 0.7 };
-
 const scenarioSelect = document.getElementById("scenarioSelect");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -21,93 +9,64 @@ const planBtn = document.getElementById("planBtn");
 const planOutput = document.getElementById("planOutput");
 
 const SCENARIO_PROMPTS = {
-  panel_interruption: `Scenario: You are on a panel. A female founder is repeatedly interrupted and talked over by male panelists. You are a male ally on the panel.
+  panel_interruption: `
+Scenario: You are on a panel. A female founder is repeatedly interrupted and talked over 
+by male panelists. You are a male ally on the panel.
 
-Task for the ally: Describe exactly what you would say or do in the moment to support her and shift the dynamic. Be specific, concrete, and realistic in the given power context.`,
-  investor_bias: `Scenario: An investor keeps asking a female founder biased questions about "risk", "stability", and her family, which they do not ask male founders.
+Task for the ally: Describe exactly what you would say or do in the moment to support her and 
+shift the dynamic. Be specific, concrete, and realistic in the given power context.
+`,
+  investor_bias: `
+Scenario: An investor keeps asking a female founder biased questions about "risk", 
+"stability", and her family, which they do not ask male founders.
 
-Task for the ally: Explain exactly what you would say or do to call out the bias and reframe the conversation without making the founder pay a social cost.`,
-  sexist_joke: `Scenario: In a mixed-gender founder meetup, someone makes a "joke" that is casually sexist about women founders. People laugh uncomfortably.
+Task for the ally: Explain exactly what you would say or do to call out the bias and 
+reframe the conversation without making the founder pay a social cost.
+`,
+  sexist_joke: `
+Scenario: In a mixed-gender founder meetup, someone makes a "joke" that is casually sexist 
+about women founders. People laugh uncomfortably.
 
-Task for the ally: Show how you would respond in real time so that you signal clearly the joke is not acceptable while keeping the target safe.`
+Task for the ally: Show how you would respond in real time so that you signal clearly 
+the joke is not acceptable while keeping the target safe.
+`
 };
 
-const SYSTEM_INSTRUCTIONS = `You are ALLY Coach, an AI designed to help men practice real allyship for women founders.
+const SYSTEM_INSTRUCTIONS = `
+You are ALLY Coach, an AI designed to help men practice real allyship for women founders.
 
+You:
 - Give specific, behavior-level feedback.
 - Name what is helpful and what is harmful.
-- Offer a few alternative sentences they could say.
+- Offer 2–3 alternative sentences they could say.
 - Always center the needs, safety, and agency of women founders.
-- Keep answers under 250 words.`;
+- Keep answers under 250 words.
+`;
 
-async function callHuggingFace(prompt) {
-  // If a client-side key is present, call HF directly (faster feedback, no proxy needed).
-  if (HF_API_KEY) {
-    return requestModel(
-      HF_CHAT_URL,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${HF_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: HF_MODEL,
-          messages: [{ role: "user", content: prompt }],
-          temperature: DEFAULT_PARAMETERS.temperature,
-          max_tokens: DEFAULT_PARAMETERS.max_new_tokens,
-        }),
-      },
-      "Hugging Face chat completions"
-    );
+// Core function to call Ollama local API
+async function callOllama(messages) {
+  const response = await fetch("http://localhost:11434/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama3", // ensure you pulled this: `ollama pull llama3`
+      messages,
+      stream: false
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("Ollama API error: " + response.status);
   }
 
-  // Otherwise, use the local proxy (expects HF_API_KEY on the server env).
-  return requestModel(
-    `/api/generate`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: HF_MODEL, inputs: prompt, parameters: DEFAULT_PARAMETERS }),
-    },
-    "Local proxy (start with `node server.js` if this fails)"
-  );
+  const data = await response.json();
+  // Ollama returns: { message: { role: "assistant", content: "..." }, ... }
+  return data.message && data.message.content
+    ? data.message.content
+    : JSON.stringify(data, null, 2);
 }
 
-async function requestModel(url, options, sourceLabel) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${sourceLabel} error ${res.status}: ${text || res.statusText}`);
-  }
-
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const data = await res.json();
-    return normalizeModelResponse(data);
-  }
-
-  const raw = await res.text();
-  return raw ? raw.trim() : "";
-}
-
-function normalizeModelResponse(data) {
-  // Legacy inference output
-  if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
-  if (data.generated_text) return data.generated_text;
-
-  // OpenAI-compatible chat completion shape
-  if (data.choices && data.choices[0]) {
-    const choice = data.choices[0];
-    if (choice.message && choice.message.content) return choice.message.content;
-    if (choice.text) return choice.text;
-  }
-
-  // Fallback so we can see what came back
-  if (typeof data === "string") return data;
-  return JSON.stringify(data, null, 2);
-}
-
+// Handle scenario coaching
 sendBtn.addEventListener("click", async () => {
   const scenarioKey = scenarioSelect.value;
   const userText = userInput.value.trim();
@@ -117,10 +76,9 @@ sendBtn.addEventListener("click", async () => {
     return;
   }
 
-  const scenario = SCENARIO_PROMPTS[scenarioKey] || "";
+  const scenario = SCENARIO_PROMPTS[scenarioKey];
 
-  const fullPrompt = `${SYSTEM_INSTRUCTIONS}
-
+  const userPrompt = `
 Scenario:
 ${scenario}
 
@@ -129,31 +87,35 @@ Ally attempt:
 
 Your job:
 1) Briefly say what parts of this response are helpful and why.
-2) Point out any risks or unhelpful patterns (e.g., centering themselves, tone).
+2) Point out any risks or unhelpful patterns (for example centering themselves, tone).
 3) Rewrite the response as two or three concrete options the ally could try next time.
-Use clear bullet points and plain language.`;
+Use clear bullet points and plain language.
+`;
 
   chatOutput.textContent = "Thinking...";
   sendBtn.disabled = true;
 
   try {
-    const result = await callHuggingFace(fullPrompt);
-    chatOutput.textContent = cleanAssistantOutput(result);
+    const result = await callOllama([
+      { role: "system", content: SYSTEM_INSTRUCTIONS },
+      { role: "user", content: userPrompt }
+    ]);
+    chatOutput.textContent = result.trim();
   } catch (err) {
     console.error(err);
-    // Surface useful error information in the UI so it's easier to debug.
-    chatOutput.textContent = formatError(err);
+    chatOutput.textContent =
+      "There was an error talking to the model. Check that Ollama is running on your machine.";
   } finally {
     sendBtn.disabled = false;
   }
 });
 
+// Handle 30-day action plan
 planBtn.addEventListener("click", async () => {
   const role = roleSelect.value;
   const context = contextInput.value.trim() || "early-stage startup ecosystem";
 
-  const prompt = `${SYSTEM_INSTRUCTIONS}
-
+  const planPrompt = `
 You will now create a 30-day allyship action plan.
 
 Person:
@@ -161,44 +123,32 @@ Person:
 - Context: ${context}
 
 Write a 30-day plan structured as:
-- Week 1: Awareness (small actions)
-- Week 2: Listening + learning (actions)
-- Week 3: Using influence (actions)
-- Week 4: Accountability and long-term habits (actions)
+- Week 1: Awareness (3–4 small actions)
+- Week 2: Listening and learning (3–4 actions)
+- Week 3: Using influence (3–4 actions)
+- Week 4: Accountability and long-term habits (3–4 actions)
 
 Rules:
 - Focus on women founders and their needs.
 - No hero narratives. No "savior" framing.
 - Actions should be realistic, specific, and time-bounded.
-- Keep total length under 400 words.`;
+- Keep total length under 400 words.
+`;
 
   planOutput.textContent = "Generating...";
   planBtn.disabled = true;
 
   try {
-    const result = await callHuggingFace(prompt);
-    planOutput.textContent = cleanAssistantOutput(result);
+    const result = await callOllama([
+      { role: "system", content: SYSTEM_INSTRUCTIONS },
+      { role: "user", content: planPrompt }
+    ]);
+    planOutput.textContent = result.trim();
   } catch (err) {
     console.error(err);
-    planOutput.textContent = formatError(err);
+    planOutput.textContent =
+      "There was an error generating the plan. Check that Ollama is running.";
   } finally {
     planBtn.disabled = false;
   }
 });
-
-function cleanAssistantOutput(text) {
-  if (!text) return "";
-  const idx = text.indexOf("Week 1");
-  if (idx !== -1) return text.slice(idx).trim();
-  return text.trim();
-}
-
-function formatError(err) {
-  if (!err) return "There was an error talking to the model. Please try again.";
-  const coreMessage = err && err.message ? err.message : "Unexpected error";
-  if (!HF_API_KEY) {
-    return `Error: ${coreMessage}. Add a local HF API key via config.local.js or start the proxy with HF_API_KEY set.`;
-  }
-  return `Error: ${coreMessage}`;
-}
- 

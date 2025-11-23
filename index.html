@@ -1,93 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ALLY Coach</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="container" role="main">
-      <h1>ALLY Coach</h1>
-      <p class="subtitle">
-        Practice real allyship scenarios with an AI coach trained on
-        evidence-based principles.
-      </p>
+<head>
+  <meta charset="UTF-8" />
+  <title>ALLY Coach</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>ALLY Coach</h1>
+    <p class="subtitle">
+      Practice real allyship scenarios and generate a 30-day action plan.
+    </p>
 
-      <section class="card">
-        <h2>1. Choose a scenario</h2>
-        <select id="scenarioSelect" aria-label="Choose a scenario">
-          <option value="panel_interruption">
-            Panel: female founder keeps getting interrupted
-          </option>
-          <option value="investor_bias">
-            Investor asks biased questions about “risk” and “family”
-          </option>
-          <option value="sexist_joke">
-            “Just a joke”: casual sexist comment in a meeting
-          </option>
+    <section class="card">
+      <h2>1. Choose a scenario</h2>
+      <select id="scenarioSelect">
+        <option value="panel_interruption">
+          Panel: female founder keeps getting interrupted
+        </option>
+        <option value="investor_bias">
+          Investor asks biased questions about “risk” and “family”
+        </option>
+        <option value="sexist_joke">
+          Casual sexist “joke” in a meeting
+        </option>
+      </select>
+    </section>
+
+    <section class="card">
+      <h2>2. Your response</h2>
+      <textarea id="userInput" rows="4"
+        placeholder="Type what you would say or do as an ally in this scenario."></textarea>
+      <button id="sendBtn">Get feedback</button>
+    </section>
+
+    <section class="card">
+      <h2>3. Coach feedback</h2>
+      <div id="chatOutput" class="output"></div>
+    </section>
+
+    <section class="card">
+      <h2>Ally Action Plan</h2>
+      <p>Generate a 30-day action plan tailored to your role.</p>
+      <label>
+        Your role:
+        <select id="roleSelect">
+          <option value="investor">Investor</option>
+          <option value="mentor">Mentor</option>
+          <option value="founder_peer">Founder or peer</option>
+          <option value="ecosystem_builder">Ecosystem builder</option>
         </select>
-      </section>
+      </label>
+      <label>
+        Your main context:
+        <input id="contextInput" type="text"
+          placeholder="e.g. early-stage SaaS founders, pre-seed, demo days" />
+      </label>
+      <button id="planBtn">Generate 30-day plan</button>
+      <pre id="planOutput" class="output"></pre>
+    </section>
+  </main>
 
-      <section class="card">
-        <h2>2. Your response</h2>
-        <textarea
-          id="userInput"
-          rows="4"
-          aria-label="Your response"
-          placeholder="Type what you would say or do as an ally in this scenario."
-        ></textarea>
-        <button
-          id="sendBtn"
-          aria-label="Get feedback"
-          aria-controls="chatOutput"
-        >
-          Get feedback
-        </button>
-      </section>
-
-      <section class="card">
-        <h2>3. Coach feedback</h2>
-        <div id="chatOutput" class="output" aria-live="polite"></div>
-      </section>
-
-      <section class="card">
-        <h2>Ally Action Plan</h2>
-        <p>Generate a 30-day action plan tailored to your role.</p>
-
-        <label>
-          Your role:
-          <select id="roleSelect" aria-label="Your role">
-            <option value="investor">Investor</option>
-            <option value="mentor">Mentor</option>
-            <option value="founder_peer">Founder / peer</option>
-            <option value="ecosystem_builder">Ecosystem builder</option>
-          </select>
-        </label>
-
-        <label>
-          Your main context:
-          <input
-            id="contextInput"
-            type="text"
-            aria-label="Your main context"
-            placeholder="e.g. early-stage SaaS founders, pre-seed, demo days"
-          />
-        </label>
-
-        <button
-          id="planBtn"
-          aria-label="Generate 30-day plan"
-          aria-controls="planOutput"
-        >
-          Generate 30-day plan
-        </button>
-        <pre id="planOutput" class="output"></pre>
-      </section>
-    </main>
-
-    <!-- Optional local config: create `config.local.js` with `window.__HF_API_KEY = 'hf_...';` and do NOT commit it -->
-    <script src="config.local.js"></script>
-    <script src="script.js"></script>
-  </body>
+  <script src="script.js"></script>
+</body>
 </html>
