@@ -1,4 +1,5 @@
 # Local config (do NOT commit your API key)
 config.local.js
  .env
+node_modules/
 

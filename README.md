@@ -16,13 +16,32 @@ Security note
 
 Run locally (quick)
 
-1. Start a simple static server (Python builtin):
+You have two ways to talk to the model:
+
+- **Client-side key (fastest):** add your Hugging Face token to `config.local.js` (kept out of git). The browser will call the HF router directly.
+- **Server proxy:** run `node server.js` with `HF_API_KEY` set. The browser will post to `/api/generate` and the server forwards to HF so the key stays server-side.
+
+Quick test with client-side key:
+
+1. Create `config.local.js` with your token (see below).
+2. Start a simple static server (Python builtin):
 
 ```bash
 python3 -m http.server 8000
 ```
 
-2. Open http://localhost:8000 in your browser.
+3. Open http://localhost:8000 in your browser.
+
+Proxy setup (keeps key off the client):
+
+1. Set the HF API key in an environment variable and start the provided Node server. Example (macOS / Linux / zsh):
+
+```bash
+export HF_API_KEY='hf_YOUR_TOKEN_HERE'
+node server.js
+```
+
+2. Open http://localhost:8000 in your browser. The UI will use `/api/generate` served by `server.js`.
 
 Smoke test
 
@@ -63,6 +82,11 @@ The server serves static files and exposes `/api/generate` which forwards to the
 2. Open http://localhost:8000 in your browser.
 
 Security note: never push your token to a public repository. Keep it local or use a secure secret manager.
+
+Common errors
+
+- `model_not_supported`: Your HF token does not have access to the chosen model. Switch `HF_MODEL` in `script.js` to a model you can use (e.g., a permissive open model) or request access on Hugging Face.
+- `Local proxy (start with node server.js ... ) error 404`: You launched a static server without the proxy. Either add a client-side token via `config.local.js` or start `node server.js` with `HF_API_KEY` set.
 
 Next steps you might want
 

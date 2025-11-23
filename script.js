@@ -3,10 +3,12 @@
 // The app will read the key from (in order):
 // 1) window.__HF_API_KEY (from a local file `config.local.js` you create and gitignore)
 // 2) a meta tag: <meta name="hf-api-key" content="...">
-// Otherwise HF_API_KEY will be empty and calls will fail with a clear error.
+// Otherwise HF_API_KEY will be empty and calls will fall back to the local proxy.
 const HF_API_KEY = window.__HF_API_KEY || document.querySelector('meta[name="hf-api-key"]')?.content || "";
 // Default model: set to a model accessible via your HF token. Change if needed.
 const HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
+const HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions";
+const DEFAULT_PARAMETERS = { max_new_tokens: 320, temperature: 0.7 };
 
 const scenarioSelect = document.getElementById("scenarioSelect");
 const userInput = document.getElementById("userInput");
@@ -39,36 +41,71 @@ const SYSTEM_INSTRUCTIONS = `You are ALLY Coach, an AI designed to help men prac
 - Keep answers under 250 words.`;
 
 async function callHuggingFace(prompt) {
-  // Proxy via local server so the API key stays on the server
-  const res = await fetch(`/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: HF_MODEL, inputs: prompt, parameters: { max_new_tokens: 320, temperature: 0.7 } }),
-  });
+  // If a client-side key is present, call HF directly (faster feedback, no proxy needed).
+  if (HF_API_KEY) {
+    return requestModel(
+      HF_ROUTER_URL,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${HF_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: HF_MODEL,
+          messages: [{ role: "user", content: prompt }],
+          temperature: DEFAULT_PARAMETERS.temperature,
+          max_tokens: DEFAULT_PARAMETERS.max_new_tokens,
+        }),
+      },
+      "Hugging Face router"
+    );
+  }
 
+  // Otherwise, use the local proxy (expects HF_API_KEY on the server env).
+  return requestModel(
+    `/api/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: HF_MODEL, inputs: prompt, parameters: DEFAULT_PARAMETERS }),
+    },
+    "Local proxy (start with `node server.js` if this fails)"
+  );
+}
+
+async function requestModel(url, options, sourceLabel) {
+  const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Proxy error: ${res.status} ${text}`);
+    throw new Error(`${sourceLabel} error ${res.status}: ${text || res.statusText}`);
   }
 
-  // Hugging Face may return different shapes (string or array/object)
-  const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
     const data = await res.json();
-    // Legacy inference output
-    if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
-    if (data.generated_text) return data.generated_text;
-    // OpenAI-compatible chat completion shape
-    if (data.choices && data.choices[0]) {
-      // new shape: { choices: [{ message: { content: '...' } }] }
-      const choice = data.choices[0];
-      if (choice.message && choice.message.content) return choice.message.content;
-      if (choice.text) return choice.text;
-    }
-    return JSON.stringify(data, null, 2);
+    return normalizeModelResponse(data);
   }
 
-  return await res.text();
+  const raw = await res.text();
+  return raw ? raw.trim() : "";
+}
+
+function normalizeModelResponse(data) {
+  // Legacy inference output
+  if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
+  if (data.generated_text) return data.generated_text;
+
+  // OpenAI-compatible chat completion shape
+  if (data.choices && data.choices[0]) {
+    const choice = data.choices[0];
+    if (choice.message && choice.message.content) return choice.message.content;
+    if (choice.text) return choice.text;
+  }
+
+  // Fallback so we can see what came back
+  if (typeof data === "string") return data;
+  return JSON.stringify(data, null, 2);
 }
 
 sendBtn.addEventListener("click", async () => {
@@ -105,7 +142,7 @@ Use clear bullet points and plain language.`;
   } catch (err) {
     console.error(err);
     // Surface useful error information in the UI so it's easier to debug.
-    chatOutput.textContent = err && err.message ? `Error: ${err.message}` : "There was an error talking to the model. Please try again.";
+    chatOutput.textContent = formatError(err);
   } finally {
     sendBtn.disabled = false;
   }
@@ -143,7 +180,7 @@ Rules:
     planOutput.textContent = cleanAssistantOutput(result);
   } catch (err) {
     console.error(err);
-    planOutput.textContent = err && err.message ? `Error: ${err.message}` : "There was an error generating the plan. Please try again.";
+    planOutput.textContent = formatError(err);
   } finally {
     planBtn.disabled = false;
   }
@@ -154,5 +191,14 @@ function cleanAssistantOutput(text) {
   const idx = text.indexOf("Week 1");
   if (idx !== -1) return text.slice(idx).trim();
   return text.trim();
+}
+
+function formatError(err) {
+  if (!err) return "There was an error talking to the model. Please try again.";
+  const coreMessage = err && err.message ? err.message : "Unexpected error";
+  if (!HF_API_KEY) {
+    return `Error: ${coreMessage}. Add a local HF API key via config.local.js or start the proxy with HF_API_KEY set.`;
+  }
+  return `Error: ${coreMessage}`;
 }
  
