@@ -1,71 +1,35 @@
-# ALLY Coach (local dev)
+# ALLY Coach (local Ollama build)
 
-Small static prototype for practicing allyship scenarios. This workspace contains three main files:
+Small static prototype for practicing allyship scenarios. The frontend now talks directly to a local Ollama instance so no cloud API key is required.
 
-# ALLY Coach (local dev)
-
-Small static prototype for practicing allyship scenarios. This workspace contains three main files:
-
+## Files
 - `index.html` — main UI
 - `style.css` — styles
-- `script.js` — client-side logic (calls an external model endpoint)
+- `script.js` — client-side logic (calls Ollama at `http://localhost:11434`)
+- `server.js` — legacy Hugging Face proxy (not needed for Ollama, kept for reference)
 
-Security note
+## Prerequisites
+- [Ollama](https://ollama.com/download) installed locally
+- Model pulled: `ollama pull llama3`
+- Node.js (for the smoke test)
 
-- Do not store real API keys in source control. For local testing, inject the key at runtime using a local file (recommended) or run the provided server-side proxy (recommended).
+## Run locally
+1. Start Ollama (usually `ollama serve` if it is not already running).
+2. In this folder, start a simple static server (Python example):
+   ```bash
+   python3 -m http.server 8000
+   ```
+3. Open http://localhost:8000 in your browser. The app will call Ollama on http://localhost:11434.
 
-Run locally (quick)
-
-1. Start a simple static server (Python builtin):
-
-```bash
-python3 -m http.server 8000
-```
-
-2. Open http://localhost:8000 in your browser.
-
-Smoke test
-
-There is a minimal smoke test that checks the page contains required element IDs. To run it:
-
-```bash
-npm install   # installs dev deps (nodemon) and runtime deps (express/node-fetch)
-npm test      # runs the node-based smoke test
-```
-
-Test implementation details
-
-- `test/smoke.js` reads `index.html` and asserts the presence of key element IDs used by `script.js`.
-
-Using the Hugging Face token (safe local option)
-
-Option A — local config (client-side, for quick dev):
-
-1. Create a local file named `config.local.js` in the project root. Add this single line and replace the placeholder with your token:
-
-```javascript
-window.__HF_API_KEY = "hf_YOUR_TOKEN_HERE";
-```
-
-2. Make sure `config.local.js` is not committed. This repo includes a `.gitignore` entry for `config.local.js`.
-
-Option B — server-side proxy (recommended):
-
-1. Set the HF API key in an environment variable and start the provided Node server. Example (macOS / Linux / zsh):
+## Smoke test
+A minimal smoke test checks required element IDs in `index.html`.
 
 ```bash
-export HF_API_KEY='hf_YOUR_TOKEN_HERE'
-node server.js
+npm install   # installs dev deps for the test runner
+npm test      # runs test/smoke.js
 ```
 
-The server serves static files and exposes `/api/generate` which forwards to the Hugging Face Inference API using the server-side token. This keeps the key off the client and is the recommended setup for local development.
-
-2. Open http://localhost:8000 in your browser.
-
-Security note: never push your token to a public repository. Keep it local or use a secure secret manager.
-
-Next steps you might want
-
-- Add a basic mock for the model API so the UI can be tested end-to-end without a key.
-- Add accessibility improvements like visible focus styles and additional labels.
-- Wire environment variable loading for the API key into a CI/CD secret manager for deployments.
+## Troubleshooting
+- **"Ollama API error" in the UI:** Ensure `ollama serve` is running and the `llama3` model is available locally.
+- **CORS errors:** Load the page from `http://localhost:*` so the browser can reach the local Ollama port.
+- **Server proxy path errors:** The app no longer uses `/api/generate`; point the browser to the static server and ensure Ollama is running.
